@@ -3,4 +3,14 @@
 *.pyc
 *.vvp
 *.kate-swp
+*.tcl
+*/fpga/defines.v
+*.bit
+*.cache/
+*.hw/
+*.runs/
+*.xpr
+*.rpt
+*.jou
+*.log
 
