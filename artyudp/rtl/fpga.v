@@ -80,7 +80,13 @@ module fpga (
      * UART: 500000 bps, 8N1
      */
     input  wire       uart_rxd,
-    output wire       uart_txd
+    output wire       uart_txd,
+    
+    /*
+    * PORTS
+    */
+    input wire        gpio_jb1,
+    output wire       gpio_jb2
 );
 
 // Clock and reset
@@ -245,8 +251,8 @@ core_inst (
     .led3_r(led3_r),
     .led3_g(led3_g),
     .led3_b(led3_b),
-    .led4(led4),
-    .led5(led5),
+    .led4(),//led4
+    .led5(),//led5
     .led6(led6),
     .led7(led7),
     /*
@@ -268,6 +274,43 @@ core_inst (
     .uart_rxd(uart_rxd_int),
     .uart_txd(uart_txd)
 );
+
+/*
+* PORTS
+*/
+reg [10:0] tstcntreg;
+assign gpio_jb2 = tstcntreg[10];
+assign led5 = tstcntreg[10];
+always @(posedge clk_int)
+begin
+    if(rst_int)
+    begin
+        tstcntreg <= 0;
+    end
+    else
+    begin
+        tstcntreg <= tstcntreg + 1;
+    end
+end
+
+reg mem0;
+reg state0;
+assign led4 = mem0;
+always @(posedge clk_int)
+begin
+    if(rst_int)
+    begin
+     mem0 <= gpio_jb2;
+     state0 <= 0;        
+    end
+    else
+    begin
+        if(mem0 != gpio_jb2)
+        begin
+            mem0 <= gpio_jb1;
+        end
+    end
+end
 
 endmodule
 

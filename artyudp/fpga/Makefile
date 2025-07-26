@@ -12,6 +12,7 @@ SYN_FILES += rtl/sync_signal.v
 SYN_FILES += rtl/udp_frame_processor.v
 SYN_FILES += rtl/udp_frame_terminator.v
 SYN_FILES += rtl/udp_frame_originator.v
+SYN_FILES += rtl/ADS127L1x_tdm_deserializer.v
 SYN_FILES += lib/eth/rtl/ssio_sdr_in.v
 SYN_FILES += lib/eth/rtl/mii_phy_if.v
 SYN_FILES += lib/eth/rtl/eth_mac_mii_fifo.v
