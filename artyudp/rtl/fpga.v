@@ -85,8 +85,17 @@ module fpga (
     /*
     * PORTS
     */
-    input wire        gpio_jb1,
-    output wire       gpio_jb2
+    output wire       gpio_jb1,//1-t63  FSYNC
+    output wire       gpio_jb2,//1-t61  DCLK
+    output wire       gpio_jb3,//1-t59  DOUT0
+    output wire       gpio_jb4,//1-t57  DOUT1
+    output wire       gpio_jb7,//1-t62  DOUT2
+    output wire       gpio_jb8,//1-t60  DOUT3
+    output wire       gpio_jb9,//1-t58  DOUT4
+    output wire       gpio_jb10,//1-t56 DOUT5
+    output wire       gpio_jc3, //2-"gnd"   will not be used
+    output wire       gpio_jc4, //2-t16 DOUT6
+    output wire       gpio_jc10 //2-t17 DOUT7
 );
 
 // Clock and reset
@@ -239,22 +248,22 @@ core_inst (
      */
     .btn(btn_int),
     .sw(sw_int),
-    .led0_r(led0_r),
-    .led0_g(led0_g),
-    .led0_b(led0_b),
-    .led1_r(led1_r),
-    .led1_g(led1_g),
-    .led1_b(led1_b),
-    .led2_r(led2_r),
-    .led2_g(led2_g),
-    .led2_b(led2_b),
-    .led3_r(led3_r),
-    .led3_g(led3_g),
-    .led3_b(led3_b),
-    .led4(),//led4
-    .led5(),//led5
-    .led6(led6),
-    .led7(led7),
+    .led0_r(),//led0_r
+    .led0_g(),//led0_g
+    .led0_b(),//led0_b
+    .led1_r(),//led1_r
+    .led1_g(),//led1_g
+    .led1_b(),//led1_b
+    .led2_r(),//led2_r
+    .led2_g(),//led2_g
+    .led2_b(),//led2_b
+    .led3_r(),//led3_r
+    .led3_g(),//led3_g
+    .led3_b(led3_b),//led3_b
+    .led4(led4),//led4
+    .led5(led5),//led5
+    .led6(led6),//led6
+    .led7(led7),//led7
     /*
      * Ethernet: 100BASE-T MII
      */
@@ -278,9 +287,31 @@ core_inst (
 /*
 * PORTS
 */
-reg [10:0] tstcntreg;
-assign gpio_jb2 = tstcntreg[10];
-assign led5 = tstcntreg[10];
+reg [20:0] tstcntreg;
+assign gpio_jb1 = tstcntreg[10];
+assign gpio_jb2 = tstcntreg[11];
+assign gpio_jb3 = tstcntreg[12];
+assign gpio_jb4 = tstcntreg[13];
+assign gpio_jb7 = tstcntreg[14];
+assign gpio_jb8 = tstcntreg[15];
+assign gpio_jb9 = tstcntreg[16];
+assign gpio_jb10 = tstcntreg[17];
+assign gpio_jc3 = tstcntreg[18];
+assign gpio_jc4 = tstcntreg[19];
+assign gpio_jc10 = tstcntreg[20];
+
+assign led0_r = tstcntreg[10];
+assign led0_g = tstcntreg[11];
+assign led0_b = tstcntreg[12];
+assign led1_r = tstcntreg[13];
+assign led1_g = tstcntreg[14];
+assign led1_b= tstcntreg[15];
+assign led2_r = tstcntreg[16];
+assign led2_g = tstcntreg[17];
+assign led2_b = tstcntreg[18];
+assign led3_r = tstcntreg[19];
+assign led3_g = tstcntreg[20];
+
 always @(posedge clk_int)
 begin
     if(rst_int)
@@ -290,25 +321,6 @@ begin
     else
     begin
         tstcntreg <= tstcntreg + 1;
-    end
-end
-
-reg mem0;
-reg state0;
-assign led4 = mem0;
-always @(posedge clk_int)
-begin
-    if(rst_int)
-    begin
-     mem0 <= gpio_jb2;
-     state0 <= 0;        
-    end
-    else
-    begin
-        if(mem0 != gpio_jb2)
-        begin
-            mem0 <= gpio_jb1;
-        end
     end
 end
 
