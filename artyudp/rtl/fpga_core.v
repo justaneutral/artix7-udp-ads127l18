@@ -569,8 +569,6 @@ ADS127L18_tdm_deserializer #(
     .LANE_COUNT(LANE_COUNT),           // Select [1|2|4|8]
     .BITS_PER_PACKET(BITS_PER_PACKET)      // Select [16|24|32|40] (packets may contain: status[8|0] + data[24|16] + crc[8|0])
 )   ADSL127L18_tdm_deserializer_inst    (
-    .clk(clk),
-    .rst(rst),
 
     .ADC_FSYNC(fsync),    // FSYNC pin from ADC
     .ADC_DCLK(dclk),     // DCLK pin from ADC
@@ -628,25 +626,55 @@ assign  {led0_r,led0_g,led0_b,led1_r,led1_g,led1_b,led2_r,led2_g,led2_b,led3_r,l
 
 //assign {s_tdata,s_tkeep,s_tvalid,m_tready,s_tlast,s_tuser} = {m_tdata,m_tkeep,m_tvalid,s_tready,m_tlast,m_tuser};
 
-wire [KEEP_WIDTH-1:0] adc_frame_keep = {KEEP_WIDTH{1'b1}};
-wire adc_frame_tlast = 1'b1;
-wire arc_frame_tuser = 1'b0;
 
+reg data_ready_prev;
 always @(posedge clk)
 begin
     if(rst)
     begin
-        {s_tdata,s_tkeep,s_tvalid,m_tready,s_tlast,s_tuser} <= 0;
+        {s_tdata,s_tkeep,s_tvalid,m_tready,s_tlast,s_tuser,data_ready_prev} <= 0;
     end
     else
     begin
         if(sw==4'hF)
         begin
+            s_tdata <= 0;
+            s_tkeep <= 0;
+            s_tvalid <= 0;
+            s_tlast <= 0;
+            s_tuser <= 0;
+            if(s_tready)
+            begin
+                data_ready_prev <= s_tready;
+                if( s_tready && !data_ready_prev) //receiver can accept and sender has to sed
+                begin
+                    s_tdata <= m_tdata;
+                    s_tkeep <= m_tkeep;
+                    s_tvalid <= 1'b1;
+                    s_tlast <= m_tlast;
+                    s_tuser <= m_tuser;
+                end
+            end
             {s_tdata,s_tkeep,s_tvalid,m_tready,s_tlast,s_tuser} <= {m_tdata,m_tkeep,m_tvalid,s_tready,m_tlast,m_tuser};
         end
         else
         begin
-            {s_tdata,s_tkeep,s_tvalid,m_tready,s_tlast,s_tuser} <= {adc_frame,adc_frame_keep,data_ready,arc_frame_tuser};
+            s_tdata <= 0;
+            s_tkeep <= 0;
+            s_tvalid <= 0;
+            s_tlast <= 0;
+            s_tuser <= 0;
+            if(s_tready)
+            begin
+                data_ready_prev <= data_ready;
+                if( data_ready && !data_ready_prev) //receiver can accept and sender has to sed
+                begin
+                    s_tdata <= adc_frame;
+                    s_tkeep <= {KEEP_WIDTH{1'b1}};
+                    s_tvalid <= 1'b1;
+                    s_tlast <= 1'b1;
+                end
+            end
         end
     end
 end

@@ -6,12 +6,9 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 module ADS127L18_tdm_deserializer #(     
-    parameter LANE_COUNT = 4,           // Select [1|2|4|8]
+    parameter LANE_COUNT = 8,           // Select [1|2|4|8]
     parameter BITS_PER_PACKET = 24      // Select [16|24|32|40] (packets may contain: status[8|0] + data[24|16] + crc[8|0])
 )(
-    input clk,
-    input rst,
-    
     input ADC_FSYNC,    // FSYNC pin from ADC
     input ADC_DCLK,     // DCLK pin from ADC
     input ADC_DOUT0,    // DOUT0 pin from ADC
@@ -40,95 +37,40 @@ module ADS127L18_tdm_deserializer #(
     localparam BITS_PER_LANE = (BITS_PER_PACKET * CHANNELS_PER_LANE);
     localparam DCLK_DATA_COUNT = (CHANNELS_PER_LANE * BITS_PER_PACKET) - 1;   // Max value = 320 - 1 (to account for counter = 0)
     
-    reg [1:0] adclk_reg;
-    always @(posedge clk)
-    begin
-        if(rst)
-        begin
-            adclk_reg <= 2'b00;
-        end
-        else
-        begin
-            adclk_reg[1] <= adclk_reg[0];
-            adclk_reg[0] <= ADC_DCLK;
-        end
-    end
-    wire ADC_DCLK_POSEDGE = (~adclk_reg[1])&adclk_reg[0]; // ____|------
-    
     //// Shift registers ////
     // Generate a shift-register for each DOUT lane. Data will be MSB first and shifted on each risging edge of DCLK. 
     reg [BITS_PER_LANE-1:0] lane_shifters [LANE_COUNT-1:0]; // 2D array
     generate 
-        always @(posedge clk)
-        begin
-            if(ADC_DCLK_POSEDGE)
-            begin
-                if (LANE_COUNT >= 1)
-                begin
-                    lane_shifters[0][BITS_PER_LANE-1:1] <= lane_shifters[0][BITS_PER_LANE-2:0];
-                    lane_shifters[0][0] <= ADC_DOUT0;
-                    if(rst)
-                    begin
-                        lane_shifters[0][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
-                    end
-                end
-                if (LANE_COUNT >= 2)
-                begin
-                    lane_shifters[1][BITS_PER_LANE-1:1] <= lane_shifters[1][BITS_PER_LANE-2:0];
-                    lane_shifters[1][0] <= ADC_DOUT1;
-                    if(rst)
-                    begin
-                        lane_shifters[1][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
-                    end
-                end
-                if (LANE_COUNT >= 4)
-                begin
-                    lane_shifters[2][BITS_PER_LANE-1:1] <= lane_shifters[2][BITS_PER_LANE-2:0];
-                    lane_shifters[2][0] <= ADC_DOUT2;
-                    if(rst)
-                    begin
-                        lane_shifters[2][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
-                    end
-                
-                    lane_shifters[3][BITS_PER_LANE-1:1] <= lane_shifters[3][BITS_PER_LANE-2:0];
-                    lane_shifters[3][0] <= ADC_DOUT3;
-                    if(rst)
-                    begin
-                        lane_shifters[3][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
-                    end
-                end
-                if (LANE_COUNT >= 8)
-                begin
-                    lane_shifters[4][BITS_PER_LANE-1:1] <= lane_shifters[4][BITS_PER_LANE-2:0];
-                    lane_shifters[4][0] <= ADC_DOUT4;
-                    if(rst)
-                    begin
-                        lane_shifters[4][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
-                    end
-                
-                    lane_shifters[5][BITS_PER_LANE-1:1] <= lane_shifters[5][BITS_PER_LANE-2:0];
-                    lane_shifters[5][0] <= ADC_DOUT5;
-                    if(rst)
-                    begin
-                        lane_shifters[5][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
-                    end
-                
-                    lane_shifters[6][BITS_PER_LANE-1:1] <= lane_shifters[6][BITS_PER_LANE-2:0];
-                    lane_shifters[6][0] <= ADC_DOUT6;
-                    if(rst)
-                    begin
-                        lane_shifters[6][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
-                    end
-                
-                    lane_shifters[7][BITS_PER_LANE-1:1] <= lane_shifters[7][BITS_PER_LANE-2:0];
-                    lane_shifters[7][0] <= ADC_DOUT7;
-                    if(rst)
-                    begin
-                        lane_shifters[7][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
-                    end
-                end
+        always @(posedge ADC_DCLK) begin
+            if (LANE_COUNT >= 1) begin
+                lane_shifters[0][BITS_PER_LANE-1:1] <= lane_shifters[0][BITS_PER_LANE-2:0];
+                lane_shifters[0][0] <= ADC_DOUT0;
             end
-        end 
+            if (LANE_COUNT >= 2) begin
+                lane_shifters[1][BITS_PER_LANE-1:1] <= lane_shifters[1][BITS_PER_LANE-2:0];
+                lane_shifters[1][0] <= ADC_DOUT1;
+            end
+            if (LANE_COUNT >= 4) begin
+                lane_shifters[2][BITS_PER_LANE-1:1] <= lane_shifters[2][BITS_PER_LANE-2:0];
+                lane_shifters[2][0] <= ADC_DOUT2;
+                
+                lane_shifters[3][BITS_PER_LANE-1:1] <= lane_shifters[3][BITS_PER_LANE-2:0];
+                lane_shifters[3][0] <= ADC_DOUT3;
+            end
+            if (LANE_COUNT >= 8) begin
+                lane_shifters[4][BITS_PER_LANE-1:1] <= lane_shifters[4][BITS_PER_LANE-2:0];
+                lane_shifters[4][0] <= ADC_DOUT4;
+                
+                lane_shifters[5][BITS_PER_LANE-1:1] <= lane_shifters[5][BITS_PER_LANE-2:0];
+                lane_shifters[5][0] <= ADC_DOUT5;
+                
+                lane_shifters[6][BITS_PER_LANE-1:1] <= lane_shifters[6][BITS_PER_LANE-2:0];
+                lane_shifters[6][0] <= ADC_DOUT6;
+                
+                lane_shifters[7][BITS_PER_LANE-1:1] <= lane_shifters[7][BITS_PER_LANE-2:0];
+                lane_shifters[7][0] <= ADC_DOUT7;
+            end
+        end
     endgenerate
     
     
@@ -151,54 +93,30 @@ module ADS127L18_tdm_deserializer #(
     // Latch the decoded data after the required # of DCLK pulses have occurred...
     reg fsync_went_low = 1'b0;  // Flag to check if we've pasted the mid-point of a frame (FSYNC goes LOW)
     reg [8:0] counter = 9'd0;   // DCLK decrementing counter. When counter value reaches zero, all data bits have been clocked into the shift register(s).
-    always @(posedge clk)
-    begin
-        data_ready <= 0;
-        if(ADC_DCLK_POSEDGE)
-        begin
-            if (counter > 0)
-            begin
-                counter <= counter - 1'b1;  // Decrement counter
-                //data_ready <= 1'b0;         // 'data_ready' is zero while counter is decrementing
-            end
-            if ((counter == 0) & (data_ready == 1'b0))
-            begin    
-                ch0_packet <= packet_wires[0];  // Latch data packets as soon as the DCLK counter counter reaches zero
-                ch1_packet <= packet_wires[1];  // 'data_ready' is used to determine if the data has already been latched
-                ch2_packet <= packet_wires[2];
-                ch3_packet <= packet_wires[3];
-                ch4_packet <= packet_wires[4];
-                ch5_packet <= packet_wires[5];
-                ch6_packet <= packet_wires[6];
-                ch7_packet <= packet_wires[7];
-            end
-            if (ADC_FSYNC == 1'b0)
-            begin    // Set the 'fsync_went_low' flag as soon FSYNC goes low. This is used to prevent the    
-                fsync_went_low <= 1'b1;     // counter from resetting in cases where all data bits are latched before FSYNC goes low.
-            end
-            if ((counter == 0) & ADC_FSYNC & fsync_went_low)
-            begin
-                counter <= DCLK_DATA_COUNT[8:0];    // Reset the counter
-                fsync_went_low <= 1'b0;             // Reset the 'fsync_went_low' flag
-            end
-            if ((counter == 0)) begin
-                data_ready <= 1'b1;     // assert 'data_ready'
-            end
+    always @(posedge ADC_DCLK) begin
+        if (counter > 0) begin
+            counter <= counter - 1'b1;  // Decrement counter
+            data_ready <= 1'b0;         // 'data_ready' is zero while counter is decrementing
         end
-        if(rst)
-        begin
-            fsync_went_low <= 0;
-            counter <= 0;
-            data_ready <= 0;
-            ch0_packet <= {BITS_PER_PACKET{1'b0}}; 
-            ch1_packet <= {BITS_PER_PACKET{1'b0}};
-            ch2_packet <= {BITS_PER_PACKET{1'b0}};
-            ch3_packet <= {BITS_PER_PACKET{1'b0}};
-            ch4_packet <= {BITS_PER_PACKET{1'b0}};
-            ch5_packet <= {BITS_PER_PACKET{1'b0}};
-            ch6_packet <= {BITS_PER_PACKET{1'b0}};
-            ch7_packet <= {BITS_PER_PACKET{1'b0}};
-            
+        if ((counter == 0) & (data_ready == 1'b0)) begin    
+            ch0_packet <= packet_wires[0];  // Latch data packets as soon as the DCLK counter counter reaches zero
+            ch1_packet <= packet_wires[1];  // 'data_ready' is used to determine if the data has already been latched
+            ch2_packet <= packet_wires[2];
+            ch3_packet <= packet_wires[3];
+            ch4_packet <= packet_wires[4];
+            ch5_packet <= packet_wires[5];
+            ch6_packet <= packet_wires[6];
+            ch7_packet <= packet_wires[7];
+        end
+        if (ADC_FSYNC == 1'b0) begin    // Set the 'fsync_went_low' flag as soon FSYNC goes low. This is used to prevent the    
+            fsync_went_low <= 1'b1;     // counter from resetting in cases where all data bits are latched before FSYNC goes low.
+        end
+        if ((counter == 0) & ADC_FSYNC & fsync_went_low) begin
+            counter <= DCLK_DATA_COUNT[8:0];    // Reset the counter
+            fsync_went_low <= 1'b0;             // Reset the 'fsync_went_low' flag
+        end
+        if ((counter == 0)) begin
+            data_ready <= 1'b1;     // assert 'data_ready'
         end
     end
 
