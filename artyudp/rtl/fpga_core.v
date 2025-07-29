@@ -6,7 +6,9 @@
 module fpga_core #
 (
     parameter TARGET = "GENERIC",
-    parameter WIDTH = 8,
+    parameter LANE_COUNT = 8,
+    parameter BITS_PER_PACKET = 24,
+    parameter WIDTH = BITS_PER_PACKET*LANE_COUNT,
     parameter KEEP_WIDTH = (WIDTH+7)>>3
 )
 (
@@ -57,7 +59,20 @@ module fpga_core #
      * UART: 115200 bps, 8N1
      */
     input  wire       uart_rxd,
-    output wire       uart_txd
+    output wire       uart_txd,
+    /*
+    * ADS127L18
+    */
+    input wire fsync,
+    input wire dclk,
+    input wire dout7,
+    input wire dout6,
+    input wire dout5,
+    input wire dout4,
+    input wire dout3,
+    input wire dout2,
+    input wire dout1,
+    input wire dout0
 );
 
 // Configuration
@@ -224,77 +239,7 @@ assign tx_ip_payload_axis_tvalid = 0;
 assign tx_ip_payload_axis_tlast = 0;
 assign tx_ip_payload_axis_tuser = 0;
 
-//// Loop back UDP
-//wire match_cond = rx_udp_dest_port == 1234;
-//wire no_match = !match_cond;
-//
-//reg match_cond_reg = 0;
-//reg no_match_reg = 0;
-//
-//always @(posedge clk) begin
-//    if (rst) begin
-//        match_cond_reg <= 0;
-//        no_match_reg <= 0;
-//    end else begin
-//        if (rx_udp_payload_axis_tvalid) begin
-//            if ((!match_cond_reg && !no_match_reg) ||
-//                (rx_udp_payload_axis_tvalid && rx_udp_payload_axis_tready && rx_udp_payload_axis_tlast)) begin
-//                match_cond_reg <= match_cond;
-//                no_match_reg <= no_match;
-//            end
-//        end else begin
-//            match_cond_reg <= 0;
-//            no_match_reg <= 0;
-//        end
-//    end
-//end
-//
-//assign tx_udp_hdr_valid = rx_udp_hdr_valid && match_cond;
-//assign rx_udp_hdr_ready = (tx_eth_hdr_ready && match_cond) || no_match;
-//assign tx_udp_ip_dscp = 0;
-//assign tx_udp_ip_ecn = 0;
-//assign tx_udp_ip_ttl = 64;
-//assign tx_udp_ip_source_ip = local_ip;
-//assign tx_udp_ip_dest_ip = rx_udp_ip_source_ip;
-//assign tx_udp_source_port = rx_udp_dest_port;
-//assign tx_udp_dest_port = rx_udp_source_port;
-//assign tx_udp_length = rx_udp_length;
-//assign tx_udp_checksum = 0;
-//
-//assign tx_udp_payload_axis_tdata = tx_fifo_udp_payload_axis_tdata;
-//assign tx_udp_payload_axis_tvalid = tx_fifo_udp_payload_axis_tvalid;
-//assign tx_fifo_udp_payload_axis_tready = tx_udp_payload_axis_tready;
-//assign tx_udp_payload_axis_tlast = tx_fifo_udp_payload_axis_tlast;
-//assign tx_udp_payload_axis_tuser = tx_fifo_udp_payload_axis_tuser;
 
-//assign rx_fifo_udp_payload_axis_tdata = rx_udp_payload_axis_tdata;
-//assign rx_fifo_udp_payload_axis_tvalid = rx_udp_payload_axis_tvalid && match_cond_reg;
-//assign rx_udp_payload_axis_tready = (rx_fifo_udp_payload_axis_tready && match_cond_reg) || no_match_reg;
-//assign rx_fifo_udp_payload_axis_tlast = rx_udp_payload_axis_tlast;
-//assign rx_fifo_udp_payload_axis_tuser = rx_udp_payload_axis_tuser;
-
-// Place first payload byte onto LEDs
-reg valid_last = 0;
-reg [7:0] led_reg = 0;
-
-always @(posedge clk) begin
-    if (rst) begin
-        led_reg <= 0;
-    end else begin
-        if (tx_udp_payload_axis_tvalid) begin
-            if (!valid_last) begin
-                led_reg <= tx_udp_payload_axis_tdata;
-                valid_last <= 1'b1;
-            end
-            if (tx_udp_payload_axis_tlast) begin
-                valid_last <= 1'b0;
-            end
-        end
-    end
-end
-
-//assign led = sw;
-assign {led0_g, led1_g, led2_g, led3_g, led4, led5, led6, led7} = led_reg;
 assign phy_reset_n = !rst;
 
 assign uart_txd = 0;
@@ -530,47 +475,6 @@ udp_complete_inst (
     .clear_arp_cache(0)
 );
 
-//axis_fifo #(
-//    .DEPTH(8192),
-//    .DATA_WIDTH(8),
-//    .KEEP_ENABLE(0),
-//    .ID_ENABLE(0),
-//    .DEST_ENABLE(0),
-//    .USER_ENABLE(1),
-//    .USER_WIDTH(1),
-//    .FRAME_FIFO(0)
-//)
-//udp_payload_fifo (
-//    .clk(clk),
-//    .rst(rst),
-//
-//    // AXI input
-//    .s_axis_tdata(rx_fifo_udp_payload_axis_tdata),
-//    .s_axis_tkeep(0),
-//    .s_axis_tvalid(rx_fifo_udp_payload_axis_tvalid),
-//    .s_axis_tready(rx_fifo_udp_payload_axis_tready),
-//    .s_axis_tlast(rx_fifo_udp_payload_axis_tlast),
-//    .s_axis_tid(0),
-//    .s_axis_tdest(0),
-//    .s_axis_tuser(rx_fifo_udp_payload_axis_tuser),
-//
-//    // AXI output
-//    .m_axis_tdata(tx_fifo_udp_payload_axis_tdata),
-//    .m_axis_tkeep(),
-//    .m_axis_tvalid(tx_fifo_udp_payload_axis_tvalid),
-//    .m_axis_tready(tx_fifo_udp_payload_axis_tready),
-//    .m_axis_tlast(tx_fifo_udp_payload_axis_tlast),
-//    .m_axis_tid(),
-//    .m_axis_tdest(),
-//    .m_axis_tuser(tx_fifo_udp_payload_axis_tuser),
-//
-//    // Status
-//    .status_overflow(),
-//    .status_bad_frame(),
-//    .status_good_frame()
-//);
-
-
 
 udp_frame_processor #
 (
@@ -659,23 +563,89 @@ udp_frame_processor_inst
 );
 
 
+ADS127L18_tdm_deserializer #(     
+    .LANE_COUNT(LANE_COUNT),           // Select [1|2|4|8]
+    .BITS_PER_PACKET(BITS_PER_PACKET)      // Select [16|24|32|40] (packets may contain: status[8|0] + data[24|16] + crc[8|0])
+)   ADSL127L18_tdm_deserializer_inst    (
+    .clk(clk),
+    .rst(rst),
+
+    .ADC_FSYNC(fsync),    // FSYNC pin from ADC
+    .ADC_DCLK(dclk),     // DCLK pin from ADC
+    .ADC_DOUT0(dout0),    // DOUT0 pin from ADC
+    .ADC_DOUT1(dout1),    // DOUT1 pin from ADC
+    .ADC_DOUT2(dout2),    // DOUT2 pin from ADC
+    .ADC_DOUT3(dout3),    // DOUT3 pin from ADC
+    .ADC_DOUT4(dout4),    // DOUT4 pin from ADC
+    .ADC_DOUT5(dout5),    // DOUT5 pin from ADC
+    .ADC_DOUT6(dout6),    // DOUT6 pin from ADC
+    .ADC_DOUT7(dout7),    // DOUT7 pin from ADC
+    
+    .ch0_packet(ch0_packet), // CH0 data packet (latched)
+    .ch1_packet(ch1_packet), // CH1 data packet (latched)
+    .ch2_packet(ch2_packet), // CH2 data packet (latched)
+    .ch3_packet(ch3_packet), // CH3 data packet (latched)
+    .ch4_packet(ch4_packet), // CH4 data packet (latched)
+    .ch5_packet(ch5_packet), // CH5 data packet (latched)
+    .ch6_packet(ch6_packet), // CH6 data packet (latched)
+    .ch7_packet(ch7_packet), // CH7 data packet (latched)
+    
+    .data_ready(data_ready)   // Goes high for at least 1 DCLK period after data is latched
+);
+
+wire [BITS_PER_PACKET-1:0] ch0_packet; // CH0 data packet (latched)
+wire [BITS_PER_PACKET-1:0] ch1_packet; // CH1 data packet (latched)
+wire [BITS_PER_PACKET-1:0] ch2_packet; // CH2 data packet (latched)
+wire [BITS_PER_PACKET-1:0] ch3_packet; // CH3 data packet (latched)
+wire [BITS_PER_PACKET-1:0] ch4_packet; // CH4 data packet (latched)
+wire [BITS_PER_PACKET-1:0] ch5_packet; // CH5 data packet (latched)
+wire [BITS_PER_PACKET-1:0] ch6_packet; // CH6 data packet (latched)
+wire [BITS_PER_PACKET-1:0] ch7_packet; // CH7 data packet (latched)
+wire data_ready;
+
+wire [(BITS_PER_PACKET*LANE_COUNT)-1:0] adc_frame;
+assign adc_frame = {ch0_packet,ch1_packet,ch2_packet,ch3_packet,ch4_packet,ch5_packet,ch6_packet,ch7_packet}; 
 
 wire [WIDTH-1:0] m_tdata;
 wire [KEEP_WIDTH-1:0] m_tkeep;
 wire m_tvalid;
-wire m_tready;
+reg m_tready;
 wire m_tlast;
 wire m_tuser;
-wire [WIDTH-1:0] s_tdata;
-wire [KEEP_WIDTH-1:0] s_tkeep;
-wire s_tvalid;
+reg [WIDTH-1:0] s_tdata;
+reg [KEEP_WIDTH-1:0] s_tkeep;
+reg s_tvalid;
 wire s_tready;
-wire s_tlast;
-wire s_tuser;
+reg s_tlast;
+reg s_tuser;
 
 
-assign {s_tdata,s_tkeep,s_tvalid,m_tready,s_tlast,s_tuser} = {m_tdata,m_tkeep,m_tvalid,s_tready,m_tlast,m_tuser};
+assign  {led0_r,led0_g,led0_b,led1_r,led1_g,led1_b,led2_r,led2_g,led2_b,led3_r,led3_g,led3_b,led4,led5,led6,led7} = m_tdata[15:0];
 
+//assign {s_tdata,s_tkeep,s_tvalid,m_tready,s_tlast,s_tuser} = {m_tdata,m_tkeep,m_tvalid,s_tready,m_tlast,m_tuser};
+
+wire [KEEP_WIDTH-1:0] adc_frame_keep = {KEEP_WIDTH{1'b1}};
+wire adc_frame_tlast = 1'b1;
+wire arc_frame_tuser = 1'b0;
+
+always @(posedge clk)
+begin
+    if(rst)
+    begin
+        {s_tdata,s_tkeep,s_tvalid,m_tready,s_tlast,s_tuser} <= 0;
+    end
+    else
+    begin
+        if(sw==4'hF)
+        begin
+            {s_tdata,s_tkeep,s_tvalid,m_tready,s_tlast,s_tuser} <= {m_tdata,m_tkeep,m_tvalid,s_tready,m_tlast,m_tuser};
+        end
+        else
+        begin
+            {s_tdata,s_tkeep,s_tvalid,m_tready,s_tlast,s_tuser} <= {adc_frame,adc_frame_keep,data_ready,arc_frame_tuser};
+        end
+    end
+end
 
 
 endmodule

@@ -39,6 +39,7 @@ SYN_FILES += lib/eth/rtl/arp_eth_rx.v
 SYN_FILES += lib/eth/rtl/arp_eth_tx.v
 SYN_FILES += lib/eth/rtl/eth_arb_mux.v
 SYN_FILES += lib/eth/lib/axis/rtl/arbiter.v
+SYN_FILES += lib/eth/lib/axis/rtl/axis_adapter.v
 SYN_FILES += lib/eth/lib/axis/rtl/priority_encoder.v
 SYN_FILES += lib/eth/lib/axis/rtl/axis_fifo.v
 SYN_FILES += lib/eth/lib/axis/rtl/axis_async_fifo.v

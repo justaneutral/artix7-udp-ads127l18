@@ -9,6 +9,9 @@ module ADS127L18_tdm_deserializer #(
     parameter LANE_COUNT = 4,           // Select [1|2|4|8]
     parameter BITS_PER_PACKET = 24      // Select [16|24|32|40] (packets may contain: status[8|0] + data[24|16] + crc[8|0])
 )(
+    input clk,
+    input rst,
+    
     input ADC_FSYNC,    // FSYNC pin from ADC
     input ADC_DCLK,     // DCLK pin from ADC
     input ADC_DOUT0,    // DOUT0 pin from ADC
@@ -37,40 +40,95 @@ module ADS127L18_tdm_deserializer #(
     localparam BITS_PER_LANE = (BITS_PER_PACKET * CHANNELS_PER_LANE);
     localparam DCLK_DATA_COUNT = (CHANNELS_PER_LANE * BITS_PER_PACKET) - 1;   // Max value = 320 - 1 (to account for counter = 0)
     
+    reg [1:0] adclk_reg;
+    always @(posedge clk)
+    begin
+        if(rst)
+        begin
+            adclk_reg <= 2'b00;
+        end
+        else
+        begin
+            adclk_reg[1] <= adclk_reg[0];
+            adclk_reg[0] <= ADC_DCLK;
+        end
+    end
+    wire ADC_DCLK_POSEDGE = (~adclk_reg[1])&adclk_reg[0]; // ____|------
+    
     //// Shift registers ////
     // Generate a shift-register for each DOUT lane. Data will be MSB first and shifted on each risging edge of DCLK. 
     reg [BITS_PER_LANE-1:0] lane_shifters [LANE_COUNT-1:0]; // 2D array
     generate 
-        always @(posedge ADC_DCLK) begin
-            if (LANE_COUNT >= 1) begin
-                lane_shifters[0][BITS_PER_LANE-1:1] <= lane_shifters[0][BITS_PER_LANE-2:0];
-                lane_shifters[0][0] <= ADC_DOUT0;
-            end
-            if (LANE_COUNT >= 2) begin
-                lane_shifters[1][BITS_PER_LANE-1:1] <= lane_shifters[1][BITS_PER_LANE-2:0];
-                lane_shifters[1][0] <= ADC_DOUT1;
-            end
-            if (LANE_COUNT >= 4) begin
-                lane_shifters[2][BITS_PER_LANE-1:1] <= lane_shifters[2][BITS_PER_LANE-2:0];
-                lane_shifters[2][0] <= ADC_DOUT2;
+        always @(posedge clk)
+        begin
+            if(ADC_DCLK_POSEDGE)
+            begin
+                if (LANE_COUNT >= 1)
+                begin
+                    lane_shifters[0][BITS_PER_LANE-1:1] <= lane_shifters[0][BITS_PER_LANE-2:0];
+                    lane_shifters[0][0] <= ADC_DOUT0;
+                    if(rst)
+                    begin
+                        lane_shifters[0][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
+                    end
+                end
+                if (LANE_COUNT >= 2)
+                begin
+                    lane_shifters[1][BITS_PER_LANE-1:1] <= lane_shifters[1][BITS_PER_LANE-2:0];
+                    lane_shifters[1][0] <= ADC_DOUT1;
+                    if(rst)
+                    begin
+                        lane_shifters[1][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
+                    end
+                end
+                if (LANE_COUNT >= 4)
+                begin
+                    lane_shifters[2][BITS_PER_LANE-1:1] <= lane_shifters[2][BITS_PER_LANE-2:0];
+                    lane_shifters[2][0] <= ADC_DOUT2;
+                    if(rst)
+                    begin
+                        lane_shifters[2][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
+                    end
                 
-                lane_shifters[3][BITS_PER_LANE-1:1] <= lane_shifters[3][BITS_PER_LANE-2:0];
-                lane_shifters[3][0] <= ADC_DOUT3;
+                    lane_shifters[3][BITS_PER_LANE-1:1] <= lane_shifters[3][BITS_PER_LANE-2:0];
+                    lane_shifters[3][0] <= ADC_DOUT3;
+                    if(rst)
+                    begin
+                        lane_shifters[3][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
+                    end
+                end
+                if (LANE_COUNT >= 8)
+                begin
+                    lane_shifters[4][BITS_PER_LANE-1:1] <= lane_shifters[4][BITS_PER_LANE-2:0];
+                    lane_shifters[4][0] <= ADC_DOUT4;
+                    if(rst)
+                    begin
+                        lane_shifters[4][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
+                    end
+                
+                    lane_shifters[5][BITS_PER_LANE-1:1] <= lane_shifters[5][BITS_PER_LANE-2:0];
+                    lane_shifters[5][0] <= ADC_DOUT5;
+                    if(rst)
+                    begin
+                        lane_shifters[5][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
+                    end
+                
+                    lane_shifters[6][BITS_PER_LANE-1:1] <= lane_shifters[6][BITS_PER_LANE-2:0];
+                    lane_shifters[6][0] <= ADC_DOUT6;
+                    if(rst)
+                    begin
+                        lane_shifters[6][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
+                    end
+                
+                    lane_shifters[7][BITS_PER_LANE-1:1] <= lane_shifters[7][BITS_PER_LANE-2:0];
+                    lane_shifters[7][0] <= ADC_DOUT7;
+                    if(rst)
+                    begin
+                        lane_shifters[7][BITS_PER_LANE-1:0] <= {BITS_PER_LANE{1'b0}};
+                    end
+                end
             end
-            if (LANE_COUNT >= 8) begin
-                lane_shifters[4][BITS_PER_LANE-1:1] <= lane_shifters[4][BITS_PER_LANE-2:0];
-                lane_shifters[4][0] <= ADC_DOUT4;
-                
-                lane_shifters[5][BITS_PER_LANE-1:1] <= lane_shifters[5][BITS_PER_LANE-2:0];
-                lane_shifters[5][0] <= ADC_DOUT5;
-                
-                lane_shifters[6][BITS_PER_LANE-1:1] <= lane_shifters[6][BITS_PER_LANE-2:0];
-                lane_shifters[6][0] <= ADC_DOUT6;
-                
-                lane_shifters[7][BITS_PER_LANE-1:1] <= lane_shifters[7][BITS_PER_LANE-2:0];
-                lane_shifters[7][0] <= ADC_DOUT7;
-            end
-        end
+        end 
     endgenerate
     
     
