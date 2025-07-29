@@ -68,9 +68,18 @@ module fpga (
     input wire       gpio_jb8,//1-t60  DOUT6
     input wire       gpio_jb9,//1-t58  DOUT4
     input wire       gpio_jb10,//1-t56 DOUT2
+    output reg       gpio_jc1, // first top right pin - internal clock for reference.
+    output wire      gpio_jc3, //2-"GND" data_ready_out
     input wire       gpio_jc4, //2-t16 DOUT0
     input wire       gpio_jc10 //2-t17 DOUT1
 );
+
+//speed test
+always @(posedge clk_int)
+begin
+    gpio_jc1 <= ~gpio_jc1;
+    if(rst_int) gpio_jc1 <= 0;
+end
 
 // Clock and reset
 
@@ -270,7 +279,9 @@ core_inst (
     .dout3(gpio_jb4),
     .dout2(gpio_jb10),
     .dout1(gpio_jc10),
-    .dout0(gpio_jc4)
+    .dout0(gpio_jc4),
+    
+    .data_ready_out(gpio_jc3) //2-"GND"
 );
 
 endmodule

@@ -151,30 +151,54 @@ module ADS127L18_tdm_deserializer #(
     // Latch the decoded data after the required # of DCLK pulses have occurred...
     reg fsync_went_low = 1'b0;  // Flag to check if we've pasted the mid-point of a frame (FSYNC goes LOW)
     reg [8:0] counter = 9'd0;   // DCLK decrementing counter. When counter value reaches zero, all data bits have been clocked into the shift register(s).
-    always @(posedge ADC_DCLK) begin
-        if (counter > 0) begin
-            counter <= counter - 1'b1;  // Decrement counter
-            data_ready <= 1'b0;         // 'data_ready' is zero while counter is decrementing
+    always @(posedge clk)
+    begin
+        data_ready <= 0;
+        if(ADC_DCLK_POSEDGE)
+        begin
+            if (counter > 0)
+            begin
+                counter <= counter - 1'b1;  // Decrement counter
+                //data_ready <= 1'b0;         // 'data_ready' is zero while counter is decrementing
+            end
+            if ((counter == 0) & (data_ready == 1'b0))
+            begin    
+                ch0_packet <= packet_wires[0];  // Latch data packets as soon as the DCLK counter counter reaches zero
+                ch1_packet <= packet_wires[1];  // 'data_ready' is used to determine if the data has already been latched
+                ch2_packet <= packet_wires[2];
+                ch3_packet <= packet_wires[3];
+                ch4_packet <= packet_wires[4];
+                ch5_packet <= packet_wires[5];
+                ch6_packet <= packet_wires[6];
+                ch7_packet <= packet_wires[7];
+            end
+            if (ADC_FSYNC == 1'b0)
+            begin    // Set the 'fsync_went_low' flag as soon FSYNC goes low. This is used to prevent the    
+                fsync_went_low <= 1'b1;     // counter from resetting in cases where all data bits are latched before FSYNC goes low.
+            end
+            if ((counter == 0) & ADC_FSYNC & fsync_went_low)
+            begin
+                counter <= DCLK_DATA_COUNT[8:0];    // Reset the counter
+                fsync_went_low <= 1'b0;             // Reset the 'fsync_went_low' flag
+            end
+            if ((counter == 0)) begin
+                data_ready <= 1'b1;     // assert 'data_ready'
+            end
         end
-        if ((counter == 0) & (data_ready == 1'b0)) begin    
-            ch0_packet <= packet_wires[0];  // Latch data packets as soon as the DCLK counter counter reaches zero
-            ch1_packet <= packet_wires[1];  // 'data_ready' is used to determine if the data has already been latched
-            ch2_packet <= packet_wires[2];
-            ch3_packet <= packet_wires[3];
-            ch4_packet <= packet_wires[4];
-            ch5_packet <= packet_wires[5];
-            ch6_packet <= packet_wires[6];
-            ch7_packet <= packet_wires[7];
-        end
-        if (ADC_FSYNC == 1'b0) begin    // Set the 'fsync_went_low' flag as soon FSYNC goes low. This is used to prevent the    
-            fsync_went_low <= 1'b1;     // counter from resetting in cases where all data bits are latched before FSYNC goes low.
-        end
-        if ((counter == 0) & ADC_FSYNC & fsync_went_low) begin
-            counter <= DCLK_DATA_COUNT[8:0];    // Reset the counter
-            fsync_went_low <= 1'b0;             // Reset the 'fsync_went_low' flag
-        end
-        if ((counter == 0)) begin
-            data_ready <= 1'b1;     // assert 'data_ready'
+        if(rst)
+        begin
+            fsync_went_low <= 0;
+            counter <= 0;
+            data_ready <= 0;
+            ch0_packet <= {BITS_PER_PACKET{1'b0}}; 
+            ch1_packet <= {BITS_PER_PACKET{1'b0}};
+            ch2_packet <= {BITS_PER_PACKET{1'b0}};
+            ch3_packet <= {BITS_PER_PACKET{1'b0}};
+            ch4_packet <= {BITS_PER_PACKET{1'b0}};
+            ch5_packet <= {BITS_PER_PACKET{1'b0}};
+            ch6_packet <= {BITS_PER_PACKET{1'b0}};
+            ch7_packet <= {BITS_PER_PACKET{1'b0}};
+            
         end
     end
 

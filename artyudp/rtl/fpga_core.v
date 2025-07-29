@@ -72,7 +72,9 @@ module fpga_core #
     input wire dout3,
     input wire dout2,
     input wire dout1,
-    input wire dout0
+    input wire dout0,
+    
+    output wire data_ready_out
 );
 
 // Configuration
@@ -602,6 +604,8 @@ wire [BITS_PER_PACKET-1:0] ch5_packet; // CH5 data packet (latched)
 wire [BITS_PER_PACKET-1:0] ch6_packet; // CH6 data packet (latched)
 wire [BITS_PER_PACKET-1:0] ch7_packet; // CH7 data packet (latched)
 wire data_ready;
+
+assign data_ready_out = data_ready; //for test
 
 wire [(BITS_PER_PACKET*LANE_COUNT)-1:0] adc_frame;
 assign adc_frame = {ch0_packet,ch1_packet,ch2_packet,ch3_packet,ch4_packet,ch5_packet,ch6_packet,ch7_packet}; 
