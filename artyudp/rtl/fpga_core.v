@@ -7,9 +7,7 @@ module fpga_core #
 (
     parameter TARGET = "GENERIC",
     parameter LANE_COUNT = 8,
-    parameter BITS_PER_PACKET = 24,
-    parameter WIDTH = BITS_PER_PACKET*LANE_COUNT,
-    parameter KEEP_WIDTH = (WIDTH+7)>>3
+    parameter BITS_PER_PACKET = 24 //BITS_PER_PACKET*LANE_COUNT,
 )
 (
     /*
@@ -478,11 +476,7 @@ udp_complete_inst (
 );
 
 
-udp_frame_processor #
-(
-    .WIDTH(WIDTH)
-)
-udp_frame_processor_inst
+udp_frame_processor udp_frame_processor_inst
 (
     .clk(clk),
     .rst(rst),
@@ -514,7 +508,6 @@ udp_frame_processor_inst
     .rx_udp_length(rx_udp_length),
     .rx_udp_checksum(rx_udp_checksum),
     .rx_udp_payload_axis_tdata(rx_udp_payload_axis_tdata),
-    .rx_udp_payload_axis_tkeep(1'b1), //not exist for 8-bit words
     .rx_udp_payload_axis_tvalid(rx_udp_payload_axis_tvalid),
     .rx_udp_payload_axis_tready(rx_udp_payload_axis_tready),
     .rx_udp_payload_axis_tlast(rx_udp_payload_axis_tlast),
@@ -532,7 +525,6 @@ udp_frame_processor_inst
     .tx_udp_length(tx_udp_length),
     .tx_udp_checksum(tx_udp_checksum),
     .tx_udp_payload_axis_tdata(tx_udp_payload_axis_tdata),
-    .tx_udp_payload_axis_tkeep(), //was tx_udp_payload_axis_tkeep
     .tx_udp_payload_axis_tvalid(tx_udp_payload_axis_tvalid),
     .tx_udp_payload_axis_tready(tx_udp_payload_axis_tready),
     .tx_udp_payload_axis_tlast(tx_udp_payload_axis_tlast),
@@ -541,7 +533,6 @@ udp_frame_processor_inst
      * payload RX interface
      */
     .m_tdata(m_tdata),
-    .m_tkeep(m_tkeep),
     .m_tvalid(m_tvalid),
     .m_tready(m_tready),
     .m_tlast(m_tlast),
@@ -550,7 +541,6 @@ udp_frame_processor_inst
      * payload TX interface
      */
     .s_tdata(s_tdata),
-    .s_tkeep(s_tkeep),
     .s_tvalid(s_tvalid),
     .s_tready(s_tready),
     .s_tlast(s_tlast),
@@ -608,75 +598,126 @@ assign data_ready_out = data_ready; //for test
 wire [(BITS_PER_PACKET*LANE_COUNT)-1:0] adc_frame;
 assign adc_frame = {ch0_packet,ch1_packet,ch2_packet,ch3_packet,ch4_packet,ch5_packet,ch6_packet,ch7_packet}; 
 
-wire [WIDTH-1:0] m_tdata;
-wire [KEEP_WIDTH-1:0] m_tkeep;
+wire [7:0] m_tdata;
 wire m_tvalid;
-reg m_tready;
+wire m_tready;
 wire m_tlast;
 wire m_tuser;
-reg [WIDTH-1:0] s_tdata;
-reg [KEEP_WIDTH-1:0] s_tkeep;
-reg s_tvalid;
+wire [7:0] s_tdata;
+wire s_tvalid;
 wire s_tready;
-reg s_tlast;
-reg s_tuser;
+wire s_tlast;
+wire s_tuser;
 
 
-assign  {led0_r,led0_g,led0_b,led1_r,led1_g,led1_b,led2_r,led2_g,led2_b,led3_r,led3_g,led3_b,led4,led5,led6,led7} = m_tdata[15:0];
+assign  {led0_r,led0_g,led0_b,led1_r,led1_g,led1_b,led2_r,led2_g,led2_b,led3_r,led3_g,led3_b,led4,led5,led6,led7} = 
+    {4'hf,s_tvalid,s_tready,4'h0,m_tvalid,m_tready,s_tuser,m_tuser,must_send,s_tlast};
 
-//assign {s_tdata,s_tkeep,s_tvalid,m_tready,s_tlast,s_tuser} = {m_tdata,m_tkeep,m_tvalid,s_tready,m_tlast,m_tuser};
+//assign {s_tdata,s_tvalid,m_tready,s_tlast,s_tuser} = {m_tdata,m_tvalid,s_tready,m_tlast,m_tuser};
+
+receiver #
+(
+	.NUM_FRAMES(1024), //(8192)
+	.messageType_w(8), //1 byte
+	.messageType_p(0)  //1 byte
+)
+communicator
+(
+    .clk(clk),
+    .rst(rst),
+    //
+    // payload TX interface
+    //
+    .s_tdata(m_tdata),
+    .s_tvalid(m_tvalid),
+    .s_tready(m_tready),
+    .s_tlast(m_tlast),
+    .s_tuser(m_tuser),
+    //
+    // payload RX interface
+    //
+    .m_tdata(s_tdata),
+    .m_tvalid(s_tvalid),
+    .m_tready(s_tready),
+    .m_tlast(s_tlast),
+    .m_tuser(s_tuser),
+    /*
+     * process control parameters
+     */
+    .HEARTBEAT_ENABLE(1),
+    .heartbeat_interval(31'd100000000),
+    /*
+     * process status indicators
+     */
+    .debug64bitregister0(),
+    .debug64bitregister1(),
+    .debug64bitregister2()
+);
 
 
+
+reg [15:0] adc_frame_counter;
+reg [5:0] sent_counter;
 reg data_ready_prev;
+reg must_send;
 always @(posedge clk)
 begin
     if(rst)
     begin
-        {s_tdata,s_tkeep,s_tvalid,m_tready,s_tlast,s_tuser,data_ready_prev} <= 0;
+        //{s_tdata,s_tvalid,m_tready,s_tlast,s_tuser,data_ready_prev} <= 0;
+        adc_frame_counter <= 0;
+        sent_counter <= 0;
+        must_send <= 0;
     end
-    else
-    begin
-        if(sw==4'hF)
-        begin
-            s_tdata <= 0;
-            s_tkeep <= 0;
-            s_tvalid <= 0;
-            s_tlast <= 0;
-            s_tuser <= 0;
-            if(s_tready)
-            begin
-                data_ready_prev <= s_tready;
-                if( s_tready && !data_ready_prev) //receiver can accept and sender has to sed
-                begin
-                    s_tdata <= m_tdata;
-                    s_tkeep <= m_tkeep;
-                    s_tvalid <= 1'b1;
-                    s_tlast <= m_tlast;
-                    s_tuser <= m_tuser;
-                end
-            end
-            {s_tdata,s_tkeep,s_tvalid,m_tready,s_tlast,s_tuser} <= {m_tdata,m_tkeep,m_tvalid,s_tready,m_tlast,m_tuser};
-        end
-        else
-        begin
-            s_tdata <= 0;
-            s_tkeep <= 0;
-            s_tvalid <= 0;
-            s_tlast <= 0;
-            s_tuser <= 0;
-            if(s_tready)
-            begin
-                data_ready_prev <= data_ready;
-                if( data_ready && !data_ready_prev) //receiver can accept and sender has to sed
-                begin
-                    s_tdata <= adc_frame;
-                    s_tkeep <= {KEEP_WIDTH{1'b1}};
-                    s_tvalid <= 1'b1;
-                    s_tlast <= 1'b1;
-                end
-            end
-        end
-    end
+    //else
+    //begin
+        //if(sw==4'hF)
+        //begin
+            //s_tdata <= 0;
+            //s_tvalid <= 0;
+            //s_tlast <= 0;
+            //s_tuser <= 0;
+            //if(s_tready)
+            //begin
+            //    data_ready_prev <= s_tready;
+            //    if( s_tready && !data_ready_prev) //receiver can accept and sender has to sed
+            //    begin
+            //        s_tdata <= m_tdata;
+            //        s_tvalid <= 1'b1;
+            //        s_tlast <= m_tlast;
+            //        s_tuser <= m_tuser;
+            //    end
+            //end
+            //{s_tdata,s_tvalid,m_tready,s_tlast,s_tuser} <= {m_tdata,m_tvalid,s_tready,m_tlast,m_tuser};
+        //end
+        //else
+        //begin
+            //s_tdata <= 0;
+            //s_tvalid <= 0;
+            //s_tlast <= 0;
+            //s_tuser <= 0;
+            //if(s_tready)
+            //begin
+                //data_ready_prev <= data_ready;
+                //if( data_ready && !data_ready_prev) //receiver can accept and sender has to sed
+                //begin
+                //    must_send <= 1'b1;
+                //end
+                //if(s_tready && must_send)
+                //begin
+                //    adc_frame_counter <= adc_frame_counter + 1;
+                //    must_send <= 0;
+                //    if(adc_frame_counter == 0)
+                //    begin
+                //        sent_counter <= sent_counter + 1;
+                //        s_tdata <= {"\n",sent_counter[2:0]+"0",sent_counter[5:3]+"0","utsrqponmlkgihgfedc:"}; //adc_frame;
+                //        s_tvalid <= 1'b1;
+                //        s_tlast <= 1'b1;
+                //    end
+                //end
+            //end
+        //end
+    //end
 end
 
 

@@ -8,11 +8,7 @@
 
 module udp_frame_originator #
 (
-    parameter DEPTH = 64,
-    parameter WIDTH = 64,
-    parameter KEEP_WIDTH = (WIDTH+7)>>3,
-    parameter UDP_WIDTH = 8,
-    parameter UDP_KEEP_WIDTH = (UDP_WIDTH+7)>>3
+    parameter DEPTH = 1024
 )
 (
     /*
@@ -25,8 +21,7 @@ module udp_frame_originator #
      */
     input wire s_clk,
     input wire s_rst,
-    input wire [WIDTH-1:0] s_tdata,
-    input wire [KEEP_WIDTH-1:0] s_tkeep,
+    input wire [7:0] s_tdata,
     input wire s_tvalid,
     output wire s_tready,
     input wire s_tlast,
@@ -47,8 +42,7 @@ module udp_frame_originator #
     output wire [15:0] tx_udp_dest_port,
     output wire [15:0] tx_udp_length,
     output wire [15:0] tx_udp_checksum,
-    output wire [UDP_WIDTH-1:0] tx_udp_payload_axis_tdata,
-    output wire [UDP_KEEP_WIDTH-1:0] tx_udp_payload_axis_tkeep,
+    output wire [7:0] tx_udp_payload_axis_tdata,
     output wire tx_udp_payload_axis_tvalid,
     input wire tx_udp_payload_axis_tready,
     output wire tx_udp_payload_axis_tlast,
@@ -69,8 +63,8 @@ module udp_frame_originator #
 axis_async_fifo_adapter #
 (
     .DEPTH(DEPTH),// = 4096,
-    .S_DATA_WIDTH(WIDTH),
-    .M_DATA_WIDTH(UDP_WIDTH),// = 8,
+    .S_DATA_WIDTH(8),
+    .M_DATA_WIDTH(8),// = 8,
     .RAM_PIPELINE(2),// = 2,
     .FRAME_FIFO(0),// = 0,
     .DROP_BAD_FRAME(0),// = 0,
@@ -84,7 +78,7 @@ udp_payload_tx_fifo
     .s_clk(s_clk),
     .s_rst(s_rst),
     .s_axis_tdata(s_tdata),
-    .s_axis_tkeep(s_tkeep),
+    .s_axis_tkeep(1'b1),
     .s_axis_tvalid(s_tvalid),
     .s_axis_tready(s_tready), //out
     .s_axis_tlast(s_tlast),
@@ -98,7 +92,7 @@ udp_payload_tx_fifo
     .m_clk(tx_clk),
     .m_rst(tx_rst),
     .m_axis_tdata(tx_udp_payload_axis_tdata),
-    .m_axis_tkeep(tx_udp_payload_axis_tkeep),
+    .m_axis_tkeep(),
     .m_axis_tvalid(tx_udp_payload_axis_tvalid),
     .m_axis_tready(tx_udp_payload_axis_tready), //inp
     .m_axis_tlast(tx_udp_payload_axis_tlast),

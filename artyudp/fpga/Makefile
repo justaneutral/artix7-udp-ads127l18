@@ -7,6 +7,8 @@ FPGA_ARCH = artix7
 # Files for synthesis
 SYN_FILES = rtl/fpga.v
 SYN_FILES += rtl/fpga_core.v
+SYN_FILES += rtl/receiver.v
+SYN_FILES += rtl/memory_buffer.v 
 SYN_FILES += rtl/debounce_switch.v
 SYN_FILES += rtl/sync_signal.v
 SYN_FILES += rtl/udp_frame_processor.v

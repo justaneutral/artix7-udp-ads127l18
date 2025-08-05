@@ -8,11 +8,7 @@
 
 module udp_frame_processor #
 (
-    parameter DEPTH = 64,
-    parameter WIDTH = 64,
-    parameter UDP_WIDTH = 8,
-    parameter KEEP_WIDTH = (WIDTH+7)>>3,
-    parameter UDP_KEEP_WIDTH = (UDP_WIDTH+7)>>3
+    parameter DEPTH = 1024
 )
 (
     input wire clk,
@@ -44,8 +40,7 @@ module udp_frame_processor #
     input wire [15:0] rx_udp_dest_port,
     input wire [15:0] rx_udp_length,
     input wire [15:0] rx_udp_checksum,
-    input wire [UDP_WIDTH-1:0] rx_udp_payload_axis_tdata, //(* mark_debug = "true" *)
-    input wire [UDP_KEEP_WIDTH-1:0] rx_udp_payload_axis_tkeep,
+    input wire [7:0] rx_udp_payload_axis_tdata, //(* mark_debug = "true" *)
     input wire rx_udp_payload_axis_tvalid,
     output wire rx_udp_payload_axis_tready,
     input wire rx_udp_payload_axis_tlast,
@@ -62,8 +57,7 @@ module udp_frame_processor #
     output wire [15:0] tx_udp_dest_port,
     output wire [15:0] tx_udp_length,
     output wire [15:0] tx_udp_checksum,
-    output wire [UDP_WIDTH-1:0] tx_udp_payload_axis_tdata,
-    output wire [UDP_KEEP_WIDTH-1:0] tx_udp_payload_axis_tkeep,
+    output wire [7:0] tx_udp_payload_axis_tdata,
     output wire tx_udp_payload_axis_tvalid,
     input wire tx_udp_payload_axis_tready,
     output wire tx_udp_payload_axis_tlast,
@@ -71,8 +65,7 @@ module udp_frame_processor #
     /*
      * payload RX interface
      */
-    output wire [WIDTH-1:0] m_tdata,
-    output wire [KEEP_WIDTH-1:0] m_tkeep,
+    output wire [7:0] m_tdata,
     output wire m_tvalid,
     input wire m_tready,
     output wire m_tlast,
@@ -80,8 +73,7 @@ module udp_frame_processor #
     /*
      * payload TX interface
      */
-    input wire [WIDTH-1:0] s_tdata,
-    input wire [KEEP_WIDTH-1:0] s_tkeep,
+    input wire [7:0] s_tdata,
     input wire s_tvalid,
     output wire s_tready,
     input wire s_tlast,
@@ -104,10 +96,7 @@ assign tx_udp_dest_port = rx_udp_source_port;
 
 udp_frame_terminator #
 (
-    .DEPTH(DEPTH),
-    .WIDTH(WIDTH),
-    .UDP_WIDTH(UDP_WIDTH),
-    .UDP_KEEP_WIDTH(UDP_KEEP_WIDTH)
+    .DEPTH(DEPTH)
 )
 udp_terminator
 (
@@ -143,7 +132,6 @@ udp_terminator
     .rx_udp_length(rx_udp_length),
     .rx_udp_checksum(rx_udp_checksum),
     .rx_udp_payload_axis_tdata(rx_udp_payload_axis_tdata),
-    .rx_udp_payload_axis_tkeep(rx_udp_payload_axis_tkeep),
     .rx_udp_payload_axis_tvalid(rx_udp_payload_axis_tvalid),
     .rx_udp_payload_axis_tready(rx_udp_payload_axis_tready),
     .rx_udp_payload_axis_tlast(rx_udp_payload_axis_tlast),
@@ -154,7 +142,6 @@ udp_terminator
     .m_clk(clk1),
     .m_rst(rst1),
     .m_tdata(m_tdata),
-    .m_tkeep(m_tkeep),
     .m_tvalid(m_tvalid),
     .m_tready(m_tready),
     .m_tlast(m_tlast),
@@ -174,10 +161,7 @@ udp_terminator
 
 udp_frame_originator #
 (
-    .DEPTH(DEPTH),
-    .WIDTH(WIDTH),
-    .UDP_WIDTH(UDP_WIDTH),
-    .UDP_KEEP_WIDTH(UDP_KEEP_WIDTH)
+    .DEPTH(DEPTH)
 )
 
 udp_originator
@@ -193,7 +177,6 @@ udp_originator
     .s_clk(clk1),
     .s_rst(rst1),
     .s_tdata(s_tdata),
-    .s_tkeep(s_tkeep),
     .s_tvalid(s_tvalid),
     .s_tready(s_tready),
     .s_tlast(s_tlast),
@@ -215,7 +198,6 @@ udp_originator
     .tx_udp_length(tx_udp_length),
     .tx_udp_checksum(tx_udp_checksum),
     .tx_udp_payload_axis_tdata(tx_udp_payload_axis_tdata),
-    .tx_udp_payload_axis_tkeep(tx_udp_payload_axis_tkeep),
     .tx_udp_payload_axis_tvalid(tx_udp_payload_axis_tvalid),
     .tx_udp_payload_axis_tready(tx_udp_payload_axis_tready),
     .tx_udp_payload_axis_tlast(tx_udp_payload_axis_tlast),

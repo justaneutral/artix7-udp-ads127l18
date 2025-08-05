@@ -8,11 +8,7 @@
 
 module udp_frame_terminator #
 (
-    parameter DEPTH = 64,
-    parameter WIDTH = 64,
-    parameter KEEP_WIDTH = (WIDTH+7)>>3,
-    parameter UDP_WIDTH = 8,
-    parameter UDP_KEEP_WIDTH = (UDP_WIDTH+7)>>3
+    parameter DEPTH = 1024
 )
 (
     /*
@@ -46,8 +42,7 @@ module udp_frame_terminator #
     input wire [15:0] rx_udp_dest_port,
     input wire [15:0] rx_udp_length,			//not used yet
     input wire [15:0] rx_udp_checksum,			//not used yet
-    input wire [UDP_WIDTH-1:0] rx_udp_payload_axis_tdata,
-    input wire [UDP_KEEP_WIDTH-1:0] rx_udp_payload_axis_tkeep,
+    input wire [7:0] rx_udp_payload_axis_tdata,
     input wire rx_udp_payload_axis_tvalid,
     output wire rx_udp_payload_axis_tready,
     input wire rx_udp_payload_axis_tlast,
@@ -57,8 +52,7 @@ module udp_frame_terminator #
      */
     input wire m_clk,
     input wire m_rst,
-    output wire [WIDTH-1:0] m_tdata,
-    output wire [KEEP_WIDTH-1:0] m_tkeep,
+    output wire [7:0] m_tdata,
     output wire m_tvalid,
     input wire m_tready,
     output wire m_tlast,
@@ -75,8 +69,7 @@ module udp_frame_terminator #
 );
 
 
-wire [UDP_WIDTH-1:0] rx_fifo_udp_payload_axis_tdata; //(* mark_debug = "true" *)
-wire [7:0] rx_fifo_udp_payload_axis_tkeep;
+wire [7:0] rx_fifo_udp_payload_axis_tdata; //(* mark_debug = "true" *)
 wire rx_fifo_udp_payload_axis_tvalid;
 wire rx_fifo_udp_payload_axis_tready;
 wire rx_fifo_udp_payload_axis_tlast;
@@ -108,7 +101,6 @@ always @(posedge rx_clk) begin
 end
 
 assign rx_fifo_udp_payload_axis_tdata = rx_udp_payload_axis_tdata;
-assign rx_fifo_udp_payload_axis_tkeep = rx_udp_payload_axis_tkeep;
 assign rx_fifo_udp_payload_axis_tvalid = rx_udp_payload_axis_tvalid && match_cond_reg;
 assign rx_udp_payload_axis_tready = (rx_fifo_udp_payload_axis_tready && match_cond_reg) || no_match_reg;
 assign rx_fifo_udp_payload_axis_tlast = rx_udp_payload_axis_tlast;
@@ -118,8 +110,8 @@ assign rx_udp_hdr_ready = ((tx_eth_hdr_ready && match_cond) || no_match);
 axis_async_fifo_adapter #
 (
     .DEPTH(DEPTH),// = 4096,
-    .S_DATA_WIDTH(UDP_WIDTH),// = 8,
-    .M_DATA_WIDTH(WIDTH),// = 8,
+    .S_DATA_WIDTH(8),// = 8,
+    .M_DATA_WIDTH(8),// = 8,
     .RAM_PIPELINE(2),// = 2,
     .FRAME_FIFO(0),// = 0,
     .DROP_BAD_FRAME(0),// = 0,
@@ -133,7 +125,7 @@ udp_payload_rx_fifo
     .s_clk(rx_clk),
     .s_rst(rx_rst),
     .s_axis_tdata(rx_fifo_udp_payload_axis_tdata),
-    .s_axis_tkeep(rx_fifo_udp_payload_axis_tkeep),
+    .s_axis_tkeep(1'b1),
     .s_axis_tvalid(rx_fifo_udp_payload_axis_tvalid),
     .s_axis_tready(rx_fifo_udp_payload_axis_tready), //out
     .s_axis_tlast(rx_fifo_udp_payload_axis_tlast),
@@ -147,7 +139,7 @@ udp_payload_rx_fifo
     .m_clk(m_clk),
     .m_rst(m_rst),
     .m_axis_tdata(m_tdata),
-    .m_axis_tkeep(m_tkeep),
+    .m_axis_tkeep(),
     .m_axis_tvalid(m_tvalid),
     .m_axis_tready(m_tready), //inp
     .m_axis_tlast(m_tlast),
