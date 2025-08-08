@@ -10,7 +10,8 @@ module receiver #
 	parameter WIDTH = 8,
     parameter NUM_FRAMES = 1024, //(8192)
 	parameter messageType_w = 8, //1 byte
-	parameter messageType_p = 0  //1 byte
+	parameter messageType_p = 0,  //1 byte
+	parameter BITS_PER_PACKET = 24 //adc word width
 )
 (
     input wire clk,
@@ -41,8 +42,38 @@ module receiver #
      */
     output reg [7:0] debug64bitregister0 = "e",
     output reg [7:0] debug64bitregister1 = "f",
-    output reg [7:0] debug64bitregister2 = "g"
-
+    output reg [7:0] debug64bitregister2 = "g",
+    /*
+     * adc signals
+     */
+    input wire [BITS_PER_PACKET-1:0] ch0_packet, // CH0 data packet (latched)
+    input wire [BITS_PER_PACKET-1:0] ch1_packet, // CH1 data packet (latched)
+    input wire [BITS_PER_PACKET-1:0] ch2_packet, // CH2 data packet (latched)
+    input wire [BITS_PER_PACKET-1:0] ch3_packet, // CH3 data packet (latched)
+    input wire [BITS_PER_PACKET-1:0] ch4_packet, // CH4 data packet (latched)
+    input wire [BITS_PER_PACKET-1:0] ch5_packet, // CH5 data packet (latched)
+    input wire [BITS_PER_PACKET-1:0] ch6_packet, // CH6 data packet (latched)
+    input wire [BITS_PER_PACKET-1:0] ch7_packet, // CH7 data packet (latched)
+    input wire data_ready,   // Goes high for at least 1 DCLK period after data is latched
+    
+    input  wire [3:0] btn,
+    input  wire [3:0] sw,
+    output wire       led0_r,
+    output wire       led0_g,
+    output wire       led0_b,
+    output wire       led1_r,
+    output wire       led1_g,
+    output wire       led1_b,
+    output wire       led2_r,
+    output wire       led2_g,
+    output wire       led2_b,
+    output wire       led3_r,
+    output wire       led3_g,
+    output wire       led3_b,
+    output wire       led4,
+    output wire       led5,
+    output wire       led6,
+    output wire       led7
 );
 
 // the below configuration works - this is for testing
@@ -53,6 +84,11 @@ assign m_tuser = s_tuser;
 assign s_tready = m_tready;
 assign m_tvalid = s_tvalid;
 */
+//assign {led0_r,led0_g,led0_b} = {s_tlast,s_tready,s_tvalid};
+//assign {led1_r,led1_g,led1_b} = {m_tlast,m_tready,m_tvalid};
+assign {led0_r,led0_g,led0_b} = iid_state1;
+assign {led1_r,led1_g,led1_b} = iid_state0;
+assign {led7,led6,led5,led4} = {s_tvalid,s_tready,m_tready,m_tvalid}; 
 
 //registers
 reg [7:0] tdata_reg;
@@ -60,10 +96,7 @@ reg tlast_reg;
 reg tuser_reg;
 reg tready_reg;
 reg tvalid_reg;
-reg [1:0] iid_state0 = 0;
-//reg [15:0] a_cnt0 = 16'b0;
-//reg [15:0] b_cnt0 = 16'b0;
-reg [31:0] heartbeat_counter = 32'b0;
+reg [2:0] packet_cnt;
 
 
 //output connections
@@ -74,38 +107,84 @@ assign s_tready = tready_reg;
 assign m_tvalid = tvalid_reg;
 
 
-always @(posedge clk)
+
+
+/*always @(posedge clk)
 begin
-    tdata_reg <= 8'h0;
-    tlast_reg <= 0;
-    tuser_reg <= 0;
-    tready_reg <= 0;
-    tvalid_reg <= 0;
-    if(rst == 1'b0)
+    if(rst)
     begin
-        tready_reg <= 1;
-        if(s_tvalid && m_tready)
+        tdata_reg <= 8'h0;
+        tlast_reg <= 0;
+        tuser_reg <= 0;
+        tready_reg <= 0;
+        tvalid_reg <= 0;
+        //adc_reg <= 0;
+        //data_index <= 0;
+        packet_cnt <= 0;
+    end
+    else
+    begin
+        //tdata_reg <= 8'h0;
+        //tlast_reg <= 0;
+        //tuser_reg <= 0;
+        //tready_reg <= 0;
+        //tvalid_reg <= 0;
+        /*if(data_index)
         begin
-            tdata_reg <= s_tdata;
-            tlast_reg <= s_tlast;
-            tuser_reg <= s_tuser;
-            tvalid_reg <= 1'b1;
+            if(m_tready)
+            begin
+                data_index <= data_index - 1; //next byte
+                case(data_index)
+                    5'd24: begin tdata_reg <= adc_reg[8*24-1:8*(24-1)]; end
+                    5'd23: begin tdata_reg <= adc_reg[8*23-1:8*(23-1)]; end
+                    5'd22: begin tdata_reg <= adc_reg[8*22-1:8*(22-1)]; end
+                    5'd21: begin tdata_reg <= adc_reg[8*21-1:8*(21-1)]; end
+                    5'd20: begin tdata_reg <= adc_reg[8*20-1:8*(20-1)]; end
+                    5'd19: begin tdata_reg <= adc_reg[8*19-1:8*(19-1)]; end
+                    5'd18: begin tdata_reg <= adc_reg[8*18-1:8*(18-1)]; end
+                    5'd17: begin tdata_reg <= adc_reg[8*17-1:8*(17-1)]; end
+                    5'd16: begin tdata_reg <= adc_reg[8*16-1:8*(16-1)]; end
+                    5'd15: begin tdata_reg <= adc_reg[8*15-1:8*(15-1)]; end
+                    5'd14: begin tdata_reg <= adc_reg[8*14-1:8*(14-1)]; end
+                    5'd13: begin tdata_reg <= adc_reg[8*13-1:8*(13-1)]; end
+                    5'd12: begin tdata_reg <= adc_reg[8*12-1:8*(12-1)]; end
+                    5'd11: begin tdata_reg <= adc_reg[8*11-1:8*(11-1)]; end
+                    5'd10: begin tdata_reg <= adc_reg[8*10-1:8*(10-1)]; end
+                    5'd9: begin tdata_reg <= adc_reg[8*9-1:8*(9-1)]; end
+                    5'd8: begin tdata_reg <= adc_reg[8*8-1:8*(8-1)]; end
+                    5'd7: begin tdata_reg <= adc_reg[8*7-1:8*(7-1)]; end
+                    5'd6: begin tdata_reg <= adc_reg[8*6-1:8*(6-1)]; end
+                    5'd5: begin tdata_reg <= adc_reg[8*5-1:8*(5-1)]; end
+                    5'd4: begin tdata_reg <= adc_reg[8*4-1:8*(4-1)]; end
+                    5'd3: begin tdata_reg <= adc_reg[8*3-1:8*(3-1)]; end
+                    5'd2: begin tdata_reg <= adc_reg[8*2-1:8*(2-1)]; end
+                    5'd1: begin tdata_reg <= adc_reg[8*1-1:8*(1-1)]; tlast_reg <= 1; end                
+                endcase
+                tvalid_reg <= 1;
+            end
+        end
+        //else
+        begin
+            tready_reg <= 1;
+            if(s_tvalid && m_tready)
+            begin
+                tdata_reg <= s_tdata;
+                tlast_reg <= s_tlast;
+                tuser_reg <= s_tuser;
+                tvalid_reg <= 1;
+                packet_cnt <= packet_cnt + s_tlast;
+            end
         end
     end
 end
-
-/*
-localparam state_width = 8;
-localparam [state_width-1:0]
-    RX_META = 0,
-    RX_DATA = 1,        //get frame header
-    CHECK_MESSAGE_TYPE = 2,
-    TX_DATA = 3,
-    TX_HEART_BEAT0 = 4,
-    TX_HEART_BEAT1 = 5,
-    TX_HEART_BEAT2 = 6;
+*/
 
 
+localparam [2:0] RX_META = 0, RX_DATA = 1, TX_DATA = 2, CHECK_MESSAGE_TYPE = 3, TX_HEART_BEAT0 = 4, TX_HEART_BEAT1 = 5, TX_HEART_BEAT2 = 6;
+
+reg [31:0] heartbeat_counter;
+reg [2:0] iid_state0, iid_state1;
+reg [15:0] a_cnt0, b_cnt0;
 
 
 always @(posedge clk)
@@ -116,7 +195,8 @@ begin
     tready_reg <= 1'b0;
     tvalid_reg <= 1'b0;
     iid_state0 <= iid_state0;
-    heartbeat_counter <= 32'b0;
+    iid_state1 <= iid_state1;
+    heartbeat_counter <= heartbeat_counter;
     a_cnt0 <= a_cnt0;
     b_cnt0 <= b_cnt0;
    
@@ -148,7 +228,7 @@ begin
         end
         else //not yet received first word of UDP frame
         begin
-            if(HEARTBEAT_ENABLE)
+            if(HEARTBEAT_ENABLE && sw == 4'hf)
             begin
                 heartbeat_counter <= heartbeat_counter + 1;
 		        debug64bitregister0 <= heartbeat_counter;
@@ -229,7 +309,7 @@ begin
     ///////// processing //////////////
     CHECK_MESSAGE_TYPE:
     begin
-        iid_state0 <= RX_META;
+        iid_state0 <= TX_DATA;
     end
 
     endcase
@@ -313,7 +393,7 @@ memory_buffer_inst
     .i_data(s_data),
     .o_data(o_data)
 );
-*/
+
 
 endmodule
 

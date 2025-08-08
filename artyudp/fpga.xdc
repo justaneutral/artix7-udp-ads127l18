@@ -137,4 +137,4 @@ set_output_delay 0 [get_ports {phy_ref_clk phy_reset_n}]
 #set_input_delay 0 [get_ports {phy_mdio}]
 
  set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets gpio_jb7_IBUF]
- 
+ set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets gpio_jc1_OBUF]

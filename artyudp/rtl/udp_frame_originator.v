@@ -119,9 +119,9 @@ assign tx_udp_ip_dscp = 0;
 assign tx_udp_ip_ecn = 0;
 assign tx_udp_ip_ttl = 64;
 assign tx_udp_ip_source_ip = local_ip;
-assign tx_udp_ip_dest_ip = {8'd239, 8'd2, 8'd2, 8'd6};
+assign tx_udp_ip_dest_ip = {8'd192,8'd168,8'd1,8'd47};//{8'd239, 8'd2, 8'd2, 8'd6};
 assign tx_udp_source_port = rx_udp_dest_port;
-assign tx_udp_dest_port = 21007;
+assign tx_udp_dest_port = 1234;
 
 
 wire sending_header = tx_udp_hdr_ready && tx_udp_hdr_valid;

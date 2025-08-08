@@ -476,7 +476,11 @@ udp_complete_inst (
 );
 
 
-udp_frame_processor udp_frame_processor_inst
+udp_frame_processor 
+#(
+    .DEPTH(1024)
+)
+udp_frame_processor_inst
 (
     .clk(clk),
     .rst(rst),
@@ -610,8 +614,8 @@ wire s_tlast;
 wire s_tuser;
 
 
-assign  {led0_r,led0_g,led0_b,led1_r,led1_g,led1_b,led2_r,led2_g,led2_b,led3_r,led3_g,led3_b,led4,led5,led6,led7} = 
-    {4'hf,s_tvalid,s_tready,4'h0,m_tvalid,m_tready,s_tuser,m_tuser,must_send,s_tlast};
+//assign  {led0_r,led0_g,led0_b,led1_r,led1_g,led1_b,led2_r,led2_g,led2_b,led3_r,led3_g,led3_b,led4,led5,led6,led7} = 
+//    {4'hf,s_tvalid,s_tready,4'h0,m_tvalid,m_tready,s_tuser,m_tuser,must_send,s_tlast};
 
 //assign {s_tdata,s_tvalid,m_tready,s_tlast,s_tuser} = {m_tdata,m_tvalid,s_tready,m_tlast,m_tuser};
 
@@ -651,7 +655,40 @@ communicator
      */
     .debug64bitregister0(),
     .debug64bitregister1(),
-    .debug64bitregister2()
+    .debug64bitregister2(),
+    /*
+     * ADC signals (from ADC xchannels)
+     */
+    .ch0_packet(ch0_packet), // CH0 data packet (latched)
+    .ch1_packet(ch1_packet), // CH1 data packet (latched)
+    .ch2_packet(ch2_packet), // CH2 data packet (latched)
+    .ch3_packet(ch3_packet), // CH3 data packet (latched)
+    .ch4_packet(ch4_packet), // CH4 data packet (latched)
+    .ch5_packet(ch5_packet), // CH5 data packet (latched)
+    .ch6_packet(ch6_packet), // CH6 data packet (latched)
+    .ch7_packet(ch7_packet), // CH7 data packet (latched)
+    
+    .data_ready(data_ready),   // Goes high for at least 1 DCLK period after data is latched
+    
+    .btn(btn),
+    .sw(sw),
+    .led0_r(led0_r),
+    .led0_g(led0_g),
+    .led0_b(led0_b),
+    .led1_r(led1_r),
+    .led1_g(led1_g),
+    .led1_b(led1_b),
+    .led2_r(led2_r),
+    .led2_g(led2_g),
+    .led2_b(led2_b),
+    .led3_r(led3_r),
+    .led3_g(led3_g),
+    .led3_b(led3_b),
+    .led4(led4),
+    .led5(led5),
+    .led6(led6),
+    .led7(led7)
+    
 );
 
 

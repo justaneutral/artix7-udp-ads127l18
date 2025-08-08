@@ -76,7 +76,7 @@ wire rx_fifo_udp_payload_axis_tlast;
 wire rx_fifo_udp_payload_axis_tuser;
 
 // Filter UDP
-wire match_cond = (rx_udp_dest_port == 1234) && (rx_udp_ip_dest_ip == {8'd192, 8'd168, 8'd1, 8'd128});
+wire match_cond = (rx_udp_dest_port == 1234 /*21001*/) && (rx_udp_ip_dest_ip == {8'd192, 8'd168, 8'd1, 8'd128}/*{8'd239, 8'd2, 8'd3, 8'd1}*/);
 wire no_match = !match_cond;
 
 reg match_cond_reg = 0;

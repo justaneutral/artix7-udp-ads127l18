@@ -68,20 +68,15 @@ module fpga (
     input wire       gpio_jb8,//1-t60  DOUT6
     input wire       gpio_jb9,//1-t58  DOUT4
     input wire       gpio_jb10,//1-t56 DOUT2
-    output wire       gpio_jc1, // first top right pin - internal clock for reference.
+    output wire      gpio_jc1, // first top right pin - FSYNC for reference.
     output wire      gpio_jc3, //2-"GND" data_ready_out
     input wire       gpio_jc4, //2-t16 DOUT0
     input wire       gpio_jc10 //2-t17 DOUT1
 );
 
-//speed test
-reg [2:0] testcounter;
-assign gpio_jc1 = testcounter[2];
-always @(posedge clk_int)
-begin
-    testcounter <= testcounter+1;
-    if(rst_int) testcounter <= 3'b0;
-end
+
+
+assign gpio_jc1 = gpio_jb1; //FSYNC watch
 
 // Clock and reset
 

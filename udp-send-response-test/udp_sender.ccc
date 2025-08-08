@@ -1,0 +1,100 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <time.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <errno.h>
+
+#define MAX_MSG_LEN 65507  // Max UDP payload
+
+void random_fill(char *buf, size_t len) {
+    for (size_t i = 0; i < len; ++i) {
+        buf[i] = 'A' + rand() % 26;
+    }
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 5) {
+        fprintf(stderr, "Usage: %s <IP> <PORT> <MESSAGE_LENGTH> <INTERVAL_NS>\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    const char *ip_str = argv[1];
+    int port = atoi(argv[2]);
+    int msg_len = atoi(argv[3]);
+    long interval_ns = atol(argv[4]);
+
+    if (msg_len <= 0 || msg_len > MAX_MSG_LEN) {
+        fprintf(stderr, "Invalid message length (1-%d)\n", MAX_MSG_LEN);
+        return EXIT_FAILURE;
+    }
+
+    // Prepare random buffer
+    char *msg = malloc(msg_len);
+    if (!msg) {
+        perror("malloc");
+        return EXIT_FAILURE;
+    }
+
+    // Socket
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0) {
+        perror("socket");
+        return EXIT_FAILURE;
+    }
+
+    // Non-blocking
+    fcntl(sock, F_SETFL, O_NONBLOCK);
+
+    struct sockaddr_in target;
+    memset(&target, 0, sizeof(target));
+    target.sin_family = AF_INET;
+    target.sin_port = htons(port);
+    inet_pton(AF_INET, ip_str, &target.sin_addr);
+
+    struct timespec interval = {
+        .tv_sec = interval_ns / 1000000000L,
+        .tv_nsec = interval_ns % 1000000000L
+    };
+
+    struct timespec last_print, now;
+    clock_gettime(CLOCK_MONOTONIC, &last_print);
+
+    unsigned long sent = 0, received = 0;
+
+    while (1) {
+        random_fill(msg, msg_len);
+
+        ssize_t s = sendto(sock, msg, msg_len, 0,
+                           (struct sockaddr *)&target, sizeof(target));
+        if (s > 0) {
+            ++sent;
+        }
+
+        // Try receiving (non-blocking)
+        char buffer[MAX_MSG_LEN];
+        ssize_t r = recv(sock, buffer, sizeof(buffer), 0);
+        while (r > 0) {
+            ++received;
+            r = recv(sock, buffer, sizeof(buffer), 0);
+        }
+
+        // Print every second
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        if ((now.tv_sec - last_print.tv_sec) >= 1) {
+            printf("Sent: %lu, Received: %lu\n", sent, received);
+            last_print = now;
+        }
+
+        nanosleep(&interval, NULL);
+    }
+
+    close(sock);
+    free(msg);
+    return 0;
+}
+
